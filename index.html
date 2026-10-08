@@ -261,7 +261,14 @@ details:not(.topic) p{margin-top:8px;color:var(--muted)}
 .src22{font-size:.82rem;max-width:34em;margin:6px 0 18px}
 .src22 a{color:inherit}
 
-.modo-dia .jumpbtns,.modo-dia #nao,.modo-dia #sim,.modo-dia #sec-msg{display:none}
+.modo-dia .como,.modo-dia .jumpbtns,.modo-dia #nao,.modo-dia #sim,.modo-dia #sec-msg{display:none}
+
+.como{list-style:none;margin:18px 0 0;padding:0;border-top:3px solid var(--ink,#111)}
+.como li{border-bottom:1px solid rgba(0,0,0,.25)}
+.como a{display:flex;gap:14px;align-items:flex-start;padding:14px 0;color:inherit;text-decoration:none}
+.como b{flex:none;width:2.1rem;height:2.1rem;display:grid;place-items:center;background:var(--red);color:var(--on-red);font-family:var(--f-display);font-weight:900;font-size:1.5rem;line-height:1}
+.como span{font-size:1.05rem;line-height:1.35}
+.como strong{font-weight:800}
 
 </style>
 <div class="grain" aria-hidden="true"></div>
@@ -311,7 +318,13 @@ details:not(.topic) p{margin-top:8px;color:var(--muted)}
     </div>
 
     <p class="count"><b id="days">18</b> <span id="daysLbl">dias para votar</span></p>
-    <p class="lede">Se você votou em branco, anulou ou ficou em casa no primeiro turno, ainda decide este. Aqui estão os motivos para não votar em Flávio Bolsonaro e para votar em Lula, cada um com a fonte.</p>
+    <p class="lede">O Dia 25 ajuda você a decidir seu voto no 2º turno e a convencer quem não votou no 1º. Em 3 passos:</p>
+
+    <ol class="como" aria-label="Como usar o Dia 25">
+      <li><a href="#nao"><b>1</b><span><strong>Leia os motivos.</strong> Toque nos cartazes de "Por que não Flávio" e "Por que sim Lula". Cada um mostra o fato e a fonte.</span></a></li>
+      <li><a href="#sec-msg"><b>2</b><span><strong>Monte a mensagem.</strong> Nos cartazes, toque em "Incluir na mensagem" nos motivos que importam para você.</span></a></li>
+      <li><a href="#sec-msg"><b>3</b><span><strong>Copie e mande</strong> para quem ficou em casa, votou em branco ou anulou. Você mesmo envia, no seu WhatsApp.</span></a></li>
+    </ol>
 
     <nav class="jumpbtns" aria-label="Ir para os motivos">
       <a class="jb nao" href="#nao">Por que <b>não</b> Flávio</a>
