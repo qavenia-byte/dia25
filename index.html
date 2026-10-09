@@ -328,6 +328,19 @@ html{scroll-padding-bottom:70px}
 .btn.alt{background:var(--ink,#141010);color:#fff}
 .acts .btn[hidden],.status[hidden]{display:none}
 
+/* Quiz e compartilhar */
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{font:inherit;font-weight:800;font-size:1.05rem;line-height:1.1;padding:14px 16px;background:transparent;color:inherit;border:3px solid var(--ink,#141010);cursor:pointer;min-height:48px}
+.chip[aria-pressed="true"]{background:var(--red);color:var(--on-red,#fff);border-color:var(--red)}
+.quiz-tema{border:3px solid var(--ink,#141010);padding:16px;margin-top:14px;display:flex;flex-direction:column;gap:12px}
+.quiz-tema h3{font-size:1.9rem}
+.quiz-pesa,.quiz-nota,.quiz-vazio{color:var(--muted);font-size:1rem}
+.send.share{margin-top:10px}
+#outro details > .share{margin:6px 0 14px}
+.modo-dia .share,.modo-dia .quiz-nota{display:none}
+.share::before{display:none}
+#outro .send{color:#141010;border-color:#141010}
+
 </style>
 </head>
 <body>
@@ -418,6 +431,13 @@ html{scroll-padding-bottom:70px}
       <div><dt>Não ir</dt><dd>A decisão fica com quem foi. Se não puder votar, justifique a ausência pelo e-Título ou na Justiça Eleitoral.</dd></div>
       <div><dt>Votar em um dos dois</dt><dd>É o único gesto que aparece no placar. Não exige gostar do candidato, exige preferir um resultado ao outro.</dd></div>
     </dl>
+  </section>
+
+  <section class="block rv" id="quiz" aria-labelledby="h-quiz">
+    <h2 id="h-quiz">O que pesa para você?</h2>
+    <p class="intro">Marque os temas que mais importam. Mostramos o que cada plano diz sobre eles, lado a lado, com a fonte. Não é um teste de afinidade: é só a comparação.</p>
+    <div class="chips" id="chips" role="group" aria-label="Temas"></div>
+    <div id="quizOut" aria-live="polite"></div>
   </section>
 
   <section class="band nao" id="nao" aria-labelledby="h-nao"><div class="band-in">
@@ -714,6 +734,16 @@ window.DIA25 = {
   ],
 
   outroLado: [
+    {
+      q: "\"Meu voto não muda nada\"",
+      a: "No 1º turno, a diferença entre Flávio e Lula foi de 2.227.651 votos. No mesmo turno, 2.300.781 pessoas votaram em branco e 3.674.149 anularam, quase 6 milhões. Branco e nulo não entram na conta dos votos válidos, e quem não vai votar também não aparece nela.",
+      s: ["tse26"]
+    },
+    {
+      q: "\"Os dois são iguais\"",
+      a: "Os planos têm diferenças concretas. Segundo o Diário de Pernambuco, só o de Lula cita o fim da escala 6x1. O de Flávio propõe reduzir a maioridade penal de 18 para 16 anos (p. 13), e o de Lula, criar o Ministério da Segurança Pública se a PEC for aprovada (p. 28 e 30). Compare os temas no app.",
+      s: ["diario", "planoflavio", "planolula"]
+    },
     { q: "\"Não quero nenhum dos dois\"", a: "Em pesquisa divulgada em junho, 49,2% diziam que não votariam de jeito nenhum em Lula e 48,3% em Flávio. A rejeição é alta e parecida, e quem pensa assim não está sozinho. O voto em branco registra o protesto, mas não entra na conta dos votos válidos.", s: ["vox"] },
     { q: "Custo de vida e gastos do governo", a: "Lula diz que a isenção do imposto de renda será compensada pela tributação das rendas mais altas. A reportagem não traz valores, e quem desconfia do governo pode querer ver essa conta antes de votar.", s: ["jp"] },
     { q: "Corrupção e governos do PT", a: "Críticos lembram os escândalos dos governos petistas. Apoiadores de Lula respondem que o STF anulou as condenações dele em 2021 porque o juízo de Curitiba não era competente para julgar os casos, sem decidir sobre a culpa. Os críticos respondem que isso não o declara inocente.", s: ["poder21"] },
@@ -727,6 +757,7 @@ window.DIA25 = {
   var REDUZ = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   // Motivos marcados para a mensagem de WhatsApp (grupo-índice).
   var marcados = ["nao-0", "nao-1", "sim-0", "sim-1"];
+  var temasSel = []; // temas marcados no quiz (ids)
 
   function el(tag, cls, text) {
     var n = document.createElement(tag);
@@ -735,12 +766,14 @@ window.DIA25 = {
     return n;
   }
 
+  function nomeCurto(f) { return f.nome.replace(/\s*\(.*?\)/g, "").split(",")[0].trim(); }
+
   function fontesLinks(ids) {
     var s = el("span", "src");
     (ids || []).forEach(function (id) {
       var f = D.fontes[id];
       if (!f) return;
-      var a = el("a", null, f.nome.split(",")[0]);
+      var a = el("a", null, nomeCurto(f));
       a.href = f.url;
       a.rel = "noopener";
       s.appendChild(a);
@@ -786,6 +819,10 @@ window.DIA25 = {
         renderMsg();
       });
       rod.appendChild(send);
+      var comp = el("button", "send share", "Compartilhar como imagem");
+      comp.type = "button";
+      comp.addEventListener("click", function () { compartilhar(comp, { tema: grupo, rotulo: grupo === "nao" ? "Por que não votar em Flávio" : "Por que votar em Lula", titulo: r.t, corpo: r.b, fontes: r.s }); });
+      rod.appendChild(comp);
       back.appendChild(rod);
       var volta = el("button", "flip back-btn", "Voltar ao cartaz");
       volta.type = "button";
@@ -862,9 +899,10 @@ window.DIA25 = {
     var info = document.getElementById("msgInfo");
     var pre = document.getElementById("msg");
     document.getElementById("status").textContent = "";
-    var n = nao.length + sim.length;
+    var temas = D.topicos.filter(function (t) { return temasSel.indexOf(t.id) >= 0; });
+    var n = nao.length + sim.length + temas.length;
     if (!n) {
-      info.textContent = "Vire os cartazes acima e toque em \"Incluir na mensagem\" para montar o texto.";
+      info.textContent = "Vire os cartazes e toque em \"Incluir na mensagem\", ou escolha temas em \"O que pesa para você\".";
       pre.textContent = "";
       return;
     }
@@ -872,8 +910,112 @@ window.DIA25 = {
     var partes = ["Quem não votou no 1º turno ainda decide o 2º. É domingo, 25/10, das 8h às 17h."];
     if (nao.length) partes.push("Por que NÃO votar em Flávio Bolsonaro:\n" + nao.map(function (x) { return "• " + x; }).join("\n"));
     if (sim.length) partes.push("Por que votar em Lula:\n" + sim.map(function (x) { return "• " + x; }).join("\n"));
+    if (temas.length) partes.push("O que cada plano diz sobre o que importa:\n" + temas.map(function (t) { return "• " + t.wa; }).join("\n"));
     partes.push("Branco e nulo não entram no placar. Vai votar?");
     pre.textContent = partes.join("\n\n");
+  }
+
+
+  /* Quiz: o usuário marca temas; mostramos Lula e Flávio lado a lado, sem veredito. */
+  function renderQuiz() {
+    var chips = document.getElementById("chips"), out = document.getElementById("quizOut");
+    if (!chips) return;
+    D.topicos.forEach(function (t) {
+      var b = el("button", "chip", t.titulo);
+      b.type = "button";
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () {
+        var k = temasSel.indexOf(t.id);
+        if (k >= 0) temasSel.splice(k, 1); else temasSel.push(t.id);
+        b.setAttribute("aria-pressed", k >= 0 ? "false" : "true");
+        desenha();
+        renderMsg();
+      });
+      chips.appendChild(b);
+    });
+    function desenha() {
+      out.textContent = "";
+      var sel = D.topicos.filter(function (t) { return temasSel.indexOf(t.id) >= 0; });
+      if (!sel.length) { out.appendChild(el("p", "quiz-vazio", "Marque um ou mais temas para ver o que cada plano diz.")); return; }
+      sel.forEach(function (t) {
+        var box = el("div", "quiz-tema");
+        box.appendChild(el("h3", null, t.titulo));
+        var cols = el("div", "cols");
+        cols.appendChild(coluna("Lula", t.lula));
+        cols.appendChild(coluna("Flávio", t.flavio));
+        box.appendChild(cols);
+        box.appendChild(el("p", "quiz-pesa", t.pesa));
+        out.appendChild(box);
+      });
+      out.appendChild(el("p", "quiz-nota", "Esses temas entram na mensagem que você copia, na seção \"Mande para quem não votou\"."));
+    }
+    desenha();
+  }
+
+  /* Cartão em imagem: desenhado no próprio aparelho, com a fonte na imagem. */
+  function quebra(x, texto, larg) {
+    var pal = texto.split(/\s+/), lin = [], at = "";
+    pal.forEach(function (p) {
+      var t = at ? at + " " + p : p;
+      if (x.measureText(t).width > larg && at) { lin.push(at); at = p; } else at = t;
+    });
+    if (at) lin.push(at);
+    return lin;
+  }
+  function desenharCartao(o) {
+    var W = 1080, H = 1350, M = 80, LW = W - 2 * M;
+    var c = document.createElement("canvas"); c.width = W; c.height = H;
+    var x = c.getContext("2d");
+    var cor = { nao: ["#7D0A1A", "#F9EDEB"], sim: ["#D0121F", "#FFFFFF"], outro: ["#F6F3EE", "#141010"] }[o.tema];
+    x.fillStyle = cor[0]; x.fillRect(0, 0, W, H);
+    x.fillStyle = cor[1]; x.textBaseline = "alphabetic";
+    function ls(v) { if ("letterSpacing" in x) x.letterSpacing = v; }
+    x.font = '800 28px "Public Sans", sans-serif'; ls("4px");
+    x.fillText(o.rotulo.toUpperCase(), M, 130); ls("0px");
+    var tam = 124, lin;
+    for (; tam >= 72; tam -= 8) {
+      x.font = '900 ' + tam + 'px "Big Shoulders Display", Impact, sans-serif';
+      lin = quebra(x, o.titulo.toUpperCase(), LW);
+      if (lin.length <= 4) break;
+    }
+    var y = 130 + 60 + tam * 0.9;
+    lin.forEach(function (l) { x.fillText(l, M, y); y += tam * 1.05; });
+    y += 30;
+    var b = 44, corpo;
+    for (; b >= 30; b -= 2) {
+      x.font = '600 ' + b + 'px "Public Sans", sans-serif';
+      corpo = quebra(x, o.corpo, LW);
+      if (y + corpo.length * (b * 1.38) < H - 310) break;
+    }
+    corpo.forEach(function (l) { y += b * 1.38; x.fillText(l, M, y - b * 0.3); });
+    var nomes = (o.fontes || []).map(function (id) { return D.fontes[id] ? nomeCurto(D.fontes[id]) : ""; }).filter(Boolean);
+    x.font = '800 28px "Public Sans", sans-serif';
+    var fl = quebra(x, "Fonte: " + nomes.join(" · "), LW), fy = H - 250 - (fl.length - 1) * 36;
+    fl.forEach(function (l, i) { x.fillText(l, M, fy + i * 36); });
+    x.fillRect(M, H - 200, LW, 4);
+    x.font = '800 38px "Public Sans", sans-serif'; x.fillText("Dia 25 · votedia25.github.io/dia25", M, H - 140);
+    x.font = '600 24px "Public Sans", sans-serif';
+    x.fillText("Material de opinião. Responsável: " + D.responsavel.nome + (D.responsavel.contato ? " · " + D.responsavel.contato.replace("Instagram ", "") : ""), M, H - 90);
+    return c;
+  }
+  function compartilhar(btn, o) {
+    var antes = btn.textContent;
+    btn.textContent = "Gerando...";
+    var p = (document.fonts && document.fonts.load) ? Promise.all([document.fonts.load('900 100px "Big Shoulders Display"'), document.fonts.load('600 40px "Public Sans"'), document.fonts.load('800 40px "Public Sans"')]).catch(function () {}) : Promise.resolve();
+    p.then(function () {
+      desenharCartao(o).toBlob(function (blob) {
+        btn.textContent = antes;
+        if (!blob) return;
+        var f = new File([blob], "dia25-" + o.tema + ".png", { type: "image/png" });
+        if (navigator.canShare && navigator.canShare({ files: [f] }) && navigator.share) {
+          navigator.share({ files: [f], text: "Dia 25: " + o.rotulo + " votedia25.github.io/dia25" }).catch(function () {});
+        } else {
+          var u = URL.createObjectURL(blob), a = document.createElement("a");
+          a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
+        }
+      }, "image/png");
+    });
   }
 
   function renderFaltam() {
@@ -889,6 +1031,10 @@ window.DIA25 = {
       var p = el("p", null, o.a + " ");
       if (o.s && o.s.length) p.appendChild(fontesLinks(o.s));
       d.appendChild(p);
+      var cb = el("button", "send share", "Compartilhar como imagem");
+      cb.type = "button";
+      cb.addEventListener("click", function () { compartilhar(cb, { tema: "outro", rotulo: "O outro lado", titulo: o.q.replace(/"/g, ""), corpo: o.a, fontes: o.s }); });
+      d.appendChild(cb);
       w.appendChild(d);
     });
   }
@@ -1048,6 +1194,7 @@ window.DIA25 = {
   renderMsg();
   renderFaltam();
   renderOutro();
+  renderQuiz();
   renderFontes();
   renderResp();
   contagem();
