@@ -1,4 +1,30 @@
-<title>Dia 25</title>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dia 25: o app do 2º turno</title>
+<meta name="description" content="Motivos com fonte, planos de governo lado a lado e uma mensagem pronta para mandar a quem não votou no 1º turno.">
+<meta name="theme-color" content="#D0121F">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:site_name" content="Dia 25">
+<meta property="og:title" content="Dia 25: o app do 2º turno">
+<meta property="og:description" content="Motivos com fonte, planos de governo lado a lado e uma mensagem pronta para mandar a quem não votou no 1º turno.">
+<meta property="og:url" content="https://votedia25.github.io/dia25/">
+<meta property="og:image" content="https://votedia25.github.io/dia25/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Dia 25: o app do 2º turno">
+<meta name="twitter:description" content="Motivos com fonte, planos de governo lado a lado e uma mensagem pronta para mandar a quem não votou no 1º turno.">
+<meta name="twitter:image" content="https://votedia25.github.io/dia25/og.png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dia 25">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Public+Sans:wght@400;600;800&display=swap">
@@ -298,7 +324,14 @@ html{scroll-padding-bottom:70px}
 .tabs a{flex:1 1 0;min-width:0;font-size:.82rem;letter-spacing:0;text-align:center}
 @media (min-width:420px){.tabs a{font-size:.95rem}}
 
+.acts{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}
+.btn.alt{background:var(--ink,#141010);color:#fff}
+.acts .btn[hidden],.status[hidden]{display:none}
+
 </style>
+</head>
+<body>
+<nav class="tabs" id="tabs" aria-label="Seções do app"><a href="#top" data-t="top" class="on"><i></i>Início</a><a href="#nao" data-t="nao" class="t-mot"><i></i>Não</a><a href="#sim" data-t="sim" class="t-mot"><i></i>Sim</a><a href="#sec-msg" data-t="sec-msg" class="t-mot"><i></i>Mensagem</a><a href="#planos" data-t="planos"><i></i>Planos</a></nav>
 <div class="grain" aria-hidden="true"></div>
 <div class="prog" id="prog" aria-hidden="true"></div>
 <aside class="vote" id="vote" aria-hidden="true"><span class="vote-msg">Seu voto: dia 25</span><span class="vote-box"><span class="vote-ballot"></span><span class="vote-urna"><i></i><b id="votePct">0%</b></span></span></aside>
@@ -436,6 +469,11 @@ html{scroll-padding-bottom:70px}
       <li><label><input type="checkbox"><span>Escolher o horário (urnas das 8h às 17h)</span></label></li>
       <li><label><input type="checkbox"><span>Combinar a ida com quem também ficou em casa no 1º turno</span></label></li>
     </ul>
+    <div class="acts">
+      <button class="btn" id="ics" type="button">Adicionar lembrete ao calendário</button>
+      <button class="btn alt" id="inst" type="button" hidden>Instalar o app</button>
+    </div>
+    <p class="status" id="iosnote" hidden>No iPhone: toque em Compartilhar e depois em "Adicionar à Tela de Início".</p>
   </section>
 
   <footer class="foot">
@@ -1027,6 +1065,42 @@ window.DIA25 = {
     }
     window.addEventListener("scroll", marca, { passive: true });
     marca();
+  })();
+
+  (function lembrete() {
+    var b = document.getElementById("ics");
+    if (!b) return;
+    b.addEventListener("click", function () {
+      var L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Dia 25//PT", "CALSCALE:GREGORIAN", "BEGIN:VEVENT",
+        "UID:dia25-2turno-2026@votedia25.github.io", "DTSTAMP:20261008T000000Z",
+        "DTSTART:20261025T110000Z", "DTEND:20261025T200000Z",
+        "SUMMARY:Votar no 2º turno",
+        "DESCRIPTION:Urnas abertas das 8h às 17h (horário de Brasília). Leve documento oficial com foto e confira seu local de votação no e-Título.",
+        "BEGIN:VALARM", "TRIGGER:-P1D", "ACTION:DISPLAY", "DESCRIPTION:Amanhã é o 2º turno", "END:VALARM",
+        "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+      try {
+        var u = URL.createObjectURL(new Blob([L], { type: "text/calendar;charset=utf-8" }));
+        var a = document.createElement("a"); a.href = u; a.download = "dia25-votar.ics";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
+      } catch (e) {}
+    });
+  })();
+
+  (function instalar() {
+    var inst = document.getElementById("inst"), nota = document.getElementById("iosnote"), ev = null;
+    var standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+    if (standalone) return;
+    if (/iphone|ipad|ipod/i.test(navigator.userAgent) && nota) nota.hidden = false;
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault(); ev = e; if (inst) inst.hidden = false;
+    });
+    if (inst) inst.addEventListener("click", function () {
+      if (!ev) return; ev.prompt(); ev.userChoice.then(function () { inst.hidden = true; ev = null; });
+    });
+    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    }
   })();
 
   function quando() {
@@ -1713,3 +1787,5 @@ window.DIA25 = {
   };
 })();
 </script>
+</body>
+</html>
